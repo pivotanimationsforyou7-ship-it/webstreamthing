@@ -21,11 +21,16 @@
 
     <h1>Project Stream</h1>
 
-    <div id="container">
-        <video controls>
-            <source src="video.mp4" type="video/mp4">
-            Your browser does not support the video tag.
-        </video>
+<div id="video-section" style="flex: 2; text-align: center;">
+    <video id="mainPlayer" controls autoplay muted style="width: 100%; border-radius: 8px;">
+        <source id="videoSource" src="video.mp4" type="video/mp4">
+        Your browser does not support the video tag.
+    </video>
+    
+    <div style="margin-top: 10px; color: #aaa; font-size: 0.9em;">
+        Streaming: <span id="videoTitle" style="color: #007bff; font-weight: bold;">video.mp4</span>
+    </div>
+</div>
 
         <div id="chat-container">
             <div id="messages"></div>
@@ -100,8 +105,40 @@
 
         sendBtn.onclick = sendMessage;
         input.onkeypress = (e) => { if(e.key === 'Enter') sendMessage(); };
+
+        // 1. List your videos in the order you want them played
+const playlist = ["video.mp4", "video2.mp4"];
+let currentIdx = 0;
+
+const player = document.getElementById('mainPlayer');
+const vSource = document.getElementById('videoSource');
+const vTitle = document.getElementById('videoTitle');
+
+// 2. The function to switch videos
+function playNext() {
+    currentIdx++;
+    
+    // Loop back to the start if we finish the last video
+    if (currentIdx >= playlist.length) {
+        currentIdx = 0;
+    }
+
+    const nextFile = playlist[currentIdx];
+    
+    // Update Source and Label
+    vSource.src = nextFile;
+    vTitle.textContent = nextFile;
+
+    // Reload and play
+    player.load();
+    player.play().catch(e => console.log("Autoplay blocked, waiting for user click."));
+}
+
+// 3. Trigger when the current video hits the end
+player.onended = () => {
+    console.log("Video ended, switching...");
+    playNext();
+};
     </script>
 </body>
 </html>
-
- //twin
