@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Stream & Chat</title>
+    <style>
+        body { font-family: sans-serif; background: #1a1a1a; color: white; display: flex; flex-direction: column; align-items: center; }
+        #container { display: flex; gap: 20px; padding: 20px; width: 90%; }
+        video { background: #000; flex: 2; border-radius: 8px; }
+        #chat-container { flex: 1; background: #2a2a2a; height: 500px; display: flex; flex-direction: column; border-radius: 8px; }
+        #messages { flex: 1; overflow-y: auto; padding: 10px; border-bottom: 1px solid #444; }
+        #input-area { padding: 10px; display: flex; gap: 5px; }
+        input { flex: 1; padding: 8px; border-radius: 4px; border: none; }
+        button { padding: 8px 15px; cursor: pointer; background: #007bff; color: white; border: none; border-radius: 4px; }
+        button:disabled { background: #555; }
+        .msg { margin-bottom: 8px; font-size: 0.9em; }
+        .msg b { color: #007bff; }
+    </style>
+</head>
+<body>
+
+    <h1>Project Stream</h1>
+
+    <div id="container">
+        <video controls>
+            <source src="video.mp4" type="video/mp4">
+            Your browser does not support the video tag.
+        </video>
+
+        <div id="chat-container">
+            <div id="messages"></div>
+            <div id="input-area">
+                <input type="text" id="chatInput" placeholder="Send a message..." maxlength="200">
+                <button id="sendBtn">Send</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        // 1. You will need to get these config values from firebase.google.com
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getDatabase, ref, push, onChildAdded } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyA97jnz3zZqn7ecaoEqZY2YVElxzNVG8lA",
+            databaseURL: "https://chatstuff-723c2-default-rtdb.firebaseio.com/",
+            projectId: "chatstuff-723c2",
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        const msgRef = ref(db, 'messages');
+
+        // Logic Variables
+        const sendBtn = document.getElementById('sendBtn');
+        const input = document.getElementById('chatInput');
+        const msgList = document.getElementById('messages');
+        let canSend = true;
+
+        // Function to Send Message
+        function sendMessage() {
+            const text = input.value.trim();
+            
+            // Check for links (Basic Regex)
+            const linkPattern = /(http|https|www|\.com|\.net|\.org)/gi;
+
+            if (!text) return;
+            if (!canSend) return alert("Slow down! 3s cooldown.");
+            if (linkPattern.test(text)) return alert("Links are not allowed!");
+
+            // Push to Firebase
+            push(msgRef, {
+                text: text,
+                timestamp: Date.now()
+            });
+
+            input.value = "";
+            
+            // Spam Timer (3 seconds)
+            canSend = false;
+            sendBtn.disabled = true;
+            setTimeout(() => {
+                canSend = true;
+                sendBtn.disabled = false;
+            }, 3000);
+        }
+
+        // Listen for new messages
+        onChildAdded(msgRef, (snapshot) => {
+            const data = snapshot.val();
+            const div = document.createElement('div');
+            div.className = 'msg';
+            // Use textContent to prevent XSS
+            div.innerHTML = `<b>Anon:</b> `;
+            const textNode = document.createTextNode(data.text);
+            div.appendChild(textNode);
+            msgList.appendChild(div);
+            msgList.scrollTop = msgList.scrollHeight;
+        });
+
+        sendBtn.onclick = sendMessage;
+        input.onkeypress = (e) => { if(e.key === 'Enter') sendMessage(); };
+    </script>
+</body>
+</html>
