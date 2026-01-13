@@ -21,16 +21,17 @@
 
     <h1>Project Stream</h1>
 
-<div id="video-section" style="flex: 2; text-align: center;">
-    <video id="mainPlayer" controls autoplay muted style="width: 100%; border-radius: 8px;">
-        <source id="videoSource" src="video.mp4" type="video/mp4">
-        Your browser does not support the video tag.
-    </video>
-    
-    <div style="margin-top: 10px; color: #aaa; font-size: 0.9em;">
-        Streaming: <span id="videoTitle" style="color: #007bff; font-weight: bold;">video.mp4</span>
-    </div>
-</div>
+    <div id="container">
+        <div id="video-section" style="flex: 2; text-align: center;">
+            <video id="mainPlayer" controls autoplay muted style="width: 100%; border-radius: 8px;">
+                <source id="videoSource" src="video.mp4" type="video/mp4">
+                Your browser does not support the video tag.
+            </video>
+            
+            <div style="margin-top: 10px; color: #aaa; font-size: 0.9em;">
+                Streaming: <span id="videoTitle" style="color: #007bff; font-weight: bold;">video.mp4</span>
+            </div>
+        </div>
 
         <div id="chat-container">
             <div id="messages"></div>
@@ -42,9 +43,9 @@
     </div>
 
     <script type="module">
-        // 1. You will need to get these config values from firebase.google.com
+        // Added 'query' and 'limitToLast' to the imports
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getDatabase, ref, push, onChildAdded } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+        import { getDatabase, ref, push, onChildAdded, query, limitToLast } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyA97jnz3zZqn7ecaoEqZY2YVElxzNVG8lA",
@@ -56,7 +57,7 @@
         const db = getDatabase(app);
         const msgRef = ref(db, 'messages');
 
-        // Logic Variables
+        // logic Variables
         const sendBtn = document.getElementById('sendBtn');
         const input = document.getElementById('chatInput');
         const msgList = document.getElementById('messages');
@@ -65,23 +66,18 @@
         // Function to Send Message
         function sendMessage() {
             const text = input.value.trim();
-            
-            // Check for links (Basic Regex)
             const linkPattern = /(http|https|www|\.com|\.net|\.org)/gi;
 
             if (!text) return;
             if (!canSend) return alert("Slow down! 3s cooldown.");
             if (linkPattern.test(text)) return alert("Links are not allowed!");
 
-            // Push to Firebase
             push(msgRef, {
                 text: text,
                 timestamp: Date.now()
             });
 
             input.value = "";
-            
-            // Spam Timer (3 seconds)
             canSend = false;
             sendBtn.disabled = true;
             setTimeout(() => {
@@ -90,12 +86,15 @@
             }, 3000);
         }
 
-        // Listen for new messages
-        onChildAdded(msgRef, (snapshot) => {
+        // --- VIEW ONLY LIMIT ---
+        // Create a query that limits the view to the last 50 messages
+        const recentMessagesQuery = query(msgRef, limitToLast(50));
+
+        // Listen for messages using the query instead of the raw reference
+        onChildAdded(recentMessagesQuery, (snapshot) => {
             const data = snapshot.val();
             const div = document.createElement('div');
             div.className = 'msg';
-            // Use textContent to prevent XSS
             div.innerHTML = `<b>Anon:</b> `;
             const textNode = document.createTextNode(data.text);
             div.appendChild(textNode);
@@ -106,39 +105,30 @@
         sendBtn.onclick = sendMessage;
         input.onkeypress = (e) => { if(e.key === 'Enter') sendMessage(); };
 
-        // 1. List your videos in the order you want them played
-const playlist = ["video.mp4", "video2.mp4", "video3.mp4", "video4.mp4", "video5.mp4", "video6.mp4"];
-let currentIdx = 0;
+        // --- PLAYLIST LOGIC ---
+        const playlist = ["video.mp4", "video2.mp4", "video3.mp4", "video4.mp4", "video5.mp4", "video6.mp4"];
+        let currentIdx = 0;
 
-const player = document.getElementById('mainPlayer');
-const vSource = document.getElementById('videoSource');
-const vTitle = document.getElementById('videoTitle');
+        const player = document.getElementById('mainPlayer');
+        const vSource = document.getElementById('videoSource');
+        const vTitle = document.getElementById('videoTitle');
 
-// 2. The function to switch videos
-function playNext() {
-    currentIdx++;
-    
-    // Loop back to the start if we finish the last video
-    if (currentIdx >= playlist.length) {
-        currentIdx = 0;
-    }
+        function playNext() {
+            currentIdx++;
+            if (currentIdx >= playlist.length) {
+                currentIdx = 0;
+            }
+            const nextFile = playlist[currentIdx];
+            vSource.src = nextFile;
+            vTitle.textContent = nextFile;
+            player.load();
+            player.play().catch(e => console.log("Autoplay blocked, waiting for user click."));
+        }
 
-    const nextFile = playlist[currentIdx];
-    
-    // Update Source and Label
-    vSource.src = nextFile;
-    vTitle.textContent = nextFile;
-
-    // Reload and play
-    player.load();
-    player.play().catch(e => console.log("Autoplay blocked, waiting for user click."));
-}
-
-// 3. Trigger when the current video hits the end
-player.onended = () => {
-    console.log("Video ended, switching...");
-    playNext();
-};
+        player.onended = () => {
+            console.log("Video ended, switching...");
+            playNext();
+        };
     </script>
 </body>
 </html>
